@@ -8,16 +8,16 @@ A typical question goes like this: How do I wire up components B and C to the da
 
 Two way binding is great, but it's much overused and abused!
 
-The solution is simple: get the data out of the UI into a set of services and use events to notify whoever wants to know when things change.
+The solution is simple: get the data out of the UI.  It belongs in services with events to notify whomever wants to know when things change.
 
-In this article I demonstrate how to build a data pipeline for the `FetchData` page of the standard Blazor Template.
+In this article I demonstrate how to build a data pipeline for the `FetchData` page of the standard Blazor Template.  Specifically I:
 
-1. Demonstrates a simple separation of code into projects to enforce a clean design principles.
-2. Builds an in-memory EF database.
-2. Demonstrates how to set up the DbContext Factory and use "unit of work" Db contexts.
-3. Demonstrates how to use interfaces to decouple core application code from the data domain code.
-4. Demonstrates how to build DI [Dependanct Injection] services.
-5. Implements an event driven service pattern to drive component updates.   
+1. Demonstrate a simple separation of code into projects to enforce a clean design principles.
+2. Build an in-memory EF database.
+2. Demonstrate how to set up the DbContext Factory and use "unit of work" Db contexts.
+3. Demonstrate how to use interfaces to decouple core application code from the data domain code.
+4. Demonstrate how to build DI [Dependanct Injection] services.
+5. Implements an event driven service pattern to drive component updates.  
 
 ## Implementation Comments
 
@@ -27,7 +27,7 @@ In this article I demonstrate how to build a data pipeline for the `FetchData` p
 
 ### Clean Design
 
-The solution is split into several projects to promote clean design and enforce dependancy separation.  Core, Data and UI are the primary domains.  I've included the namespace in the code blocks so you can see which domain the class belongs to.
+The solution is split into several projects to promote clean design and enforce dependancy separation.  Core, Data and UI are the primary domains.  I've included the namespace in the code blocks so you can see which domain each class belongs to.
 
 ### Interfaces and Dependency Injection
 
@@ -637,3 +637,18 @@ else
         => this.NotificationService.ListChanged -= this.ListChanged;
 }
 ```
+
+## Summig Up
+
+So what does this show us.
+
+1. Get your design wrong and you will pay.
+
+2. While there'a more code involved in "doing it right".  In the long run it pays dividends.
+
+3. Think component/service when you create a class.
+
+4. Components consume data objects.  They don't hold/create/manage them.
+
+5. An event driven model is much cleaner and easy to manage.
+
