@@ -1,0 +1,68 @@
+﻿@namespace Blazr.App.UI
+@implements IDisposable
+
+@inject WeatherForecastListViewService ForecastService
+@inject WeatherForecastNotificationService NotificationService
+
+<h1>Weather Forecasts at @(DateTime.Now.ToLongTimeString()) </h1>
+
+<p>This component demonstrates fetching data from a service.</p>
+<div class="p-2 text-end">
+    <button class="btn btn-primary" @onclick=this.UpdateList>Update List </button>
+</div>
+
+@if (this.ForecastService.IsLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in this.ForecastService.WeatherForecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF()</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await this.GetData();
+        this.NotificationService.ListChanged += this.ListChanged;
+    }
+
+    private async Task GetData()
+    {
+        var cancel = new CancellationToken();
+        var request = new ListProviderRequest(0, 1000, cancel);
+        await this.ForecastService.GetWeatherForecastsAsync(request);
+    }
+
+    private void ListChanged(object? sender, EventArgs e)
+    {
+        this.InvokeAsync(GetData);   
+        this.InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateList()
+        => this.NotificationService.NotifyListChanged();
+
+    public void Dispose()
+        => this.NotificationService.ListChanged -= this.ListChanged;
+}

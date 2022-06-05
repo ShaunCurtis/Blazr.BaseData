@@ -1,0 +1,45 @@
+﻿@namespace Blazr.App.UI
+
+@inject WeatherForecastListViewService ForecastService
+@inject WeatherForecastNotificationService NotificationService
+
+<h1>Weather forecast</h1>
+
+<p>This component demonstrates fetching data from a service.</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Temp. (C)</th>
+            <th>Temp. (F)</th>
+            <th>Summary</th>
+        </tr>
+    </thead>
+    <tbody>
+        <Virtualize @ref=virtualizeControl ItemsProvider=this.ForecastService.GetVirtualizeWeatherForecastsAsync>
+            <ItemContent>
+                <tr>
+                    <td>@context.Date.ToShortDateString()</td>
+                    <td>@context.TemperatureC</td>
+                    <td>@context.TemperatureF()</td>
+                    <td>@context.Summary</td>
+                </tr>
+            </ItemContent>
+
+        </Virtualize>
+    </tbody>
+</table>
+
+@code {
+    private Virtualize<WeatherForecast> virtualizeControl = default!;
+
+    protected override void OnInitialized()
+        => this.NotificationService.ListChanged += this.ListChanged;
+
+    private async void ListChanged(object? sender, EventArgs e)
+        => await this.InvokeAsync(virtualizeControl.RefreshDataAsync);
+
+    public void Dispose()
+        => this.NotificationService.ListChanged -= this.ListChanged;
+}

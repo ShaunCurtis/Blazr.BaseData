@@ -1,0 +1,49 @@
+﻿@namespace Blazr.App.UI
+@implements IDisposable
+
+@inject WeatherForecastListViewService ForecastService
+@inject WeatherForecastNotificationService NotificationService
+
+<h1>Weather Forecasts at @(DateTime.Now.ToLongTimeString()) </h1>
+
+<PagingControl PagingProvider=this.ForecastService.GetPagedWeatherForecastsAsync PageSize=10/>
+
+@if (this.ForecastService.IsLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in this.ForecastService.WeatherForecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF()</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    protected override void OnInitialized()
+        => this.NotificationService.ListChanged += this.ListChanged;
+
+    private void ListChanged(object? sender, EventArgs e)
+        => this.InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+        => this.NotificationService.ListChanged -= this.ListChanged;
+}

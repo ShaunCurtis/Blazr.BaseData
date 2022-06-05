@@ -1,0 +1,44 @@
+﻿@namespace Blazr.App.UI
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+
+
+<div class="btn-group" role="group" aria-label="Page Buttons">
+    @for (int page = 0; page <= lastPage ; page++)
+    {
+        var pageno = page;
+        var viewpageno = page + 1;
+        <button type="button" class="btn btn-sm @GetCss(pageno)" @onclick="() => this.GoToPageAsync(pageno)">@viewpageno</button>
+    }
+</div>
+
+@code {
+
+    [Parameter] public int PageSize { get; set; } = 25;
+
+    [Parameter, EditorRequired] public Func<ItemsProviderRequest, ValueTask<int>> PagingProvider { get; set; } = default!;
+
+    private int pageNo = 0;
+    private int records = 0;
+
+    private int lastPage => PageSize == 0 || records == 0
+         ? 0
+         : ((int)Math.Ceiling(Decimal.Divide(records, this.PageSize))) - 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.GoToPageAsync(0);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        pageNo = page;
+        var cancel = new CancellationToken();
+        var request = new ItemsProviderRequest(pageNo * this.PageSize, this.PageSize, cancel);
+        records = await this.PagingProvider(request);
+    }
+
+    private string GetCss(int page)
+        => page == pageNo
+        ? "btn-primary"
+        : "btn-secondary";
+}
