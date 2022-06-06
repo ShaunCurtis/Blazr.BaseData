@@ -6,29 +6,27 @@
 
 namespace Blazr.App.Core;
 
-public readonly struct ListProviderRequest
+public record ListProviderRequest
 {
-    public readonly Guid TransactionId = Guid.NewGuid();
+    public Guid TransactionId { get; init; }
 
-    public int StartIndex { get; }
+    public int StartIndex { get; init; }
 
-    public int Count { get; }
+    public int Count { get; init; }
 
-    public CancellationToken CancellationToken { get; }
+    public ListProviderRequest() {}
 
-    public ItemsProviderRequest Request => new (this.StartIndex, this.Count, this.CancellationToken);
-
-    public ListProviderRequest(int startIndex, int count, CancellationToken cancellationToken)
+    public ListProviderRequest(int startIndex, int count)
     {
+        TransactionId = Guid.NewGuid();
         StartIndex = startIndex;
         Count = count;
-        CancellationToken = cancellationToken;
     }
 
     public ListProviderRequest(ItemsProviderRequest request)
     {
+        TransactionId = Guid.NewGuid();
         StartIndex = request.StartIndex;
         Count = request.Count;
-        CancellationToken = request.CancellationToken;
     }
 }

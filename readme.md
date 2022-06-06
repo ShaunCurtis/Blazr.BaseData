@@ -17,7 +17,7 @@ In this article I demonstrate how to build a data pipeline for the `FetchData` p
 2. Demonstrate how to set up the DbContext Factory and use "unit of work" Db contexts.
 3. Demonstrate how to use interfaces to decouple core application code from the data domain code.
 4. Demonstrate how to build DI [Dependanct Injection] services.
-5. Implements an event driven service pattern to drive component updates.  
+5. Implement an event driven service pattern to drive component updates.  
 
 ## Implementation Comments
 
@@ -31,18 +31,23 @@ The solution is split into several projects to promote clean design and enforce 
 
 ### Interfaces and Dependency Injection
 
-The solution uses interfaces extensively to remove dependencies, and the DI container to manage class instances.  In general it's a good idea to classify your objects into ine of four types:
+The solution uses interfaces extensively to abstract dependencies, and the DI container to manage class instances.  In general it's a good idea to classify your objects into one of four types:
 
 1. DI Services.
 2. Components.
 3. Data Classes.
 4. Utilities - normally implemented as static classes.
 
+### Application Design
+
+![Basic Pipeline](./images/Basic-Data-Pipeline.png)
+
+
 ## Data Class
 
 Base database classes should represent the data retrieved from and submitted to the database.  Data classes are used throughout the application so are *core domain* objects.
 
-The application uses the original `WeatherForecast` class with changes:
+The application uses the original `WeatherForecast` class with the following changes:
 
 1. Changed to a `Record`.
 2. Added Id field.
@@ -62,7 +67,11 @@ public record WeatherForecast
 
 Why use a `record`?  How do you edit a `WeatherForecast`?
 
-Data read from the database should be immutable.  You should never modify the dataset that you've read.  Using records makes record equality checks simple.  To edit a record, create an edit object.  Read the record to populate the object, and create a new record to save it back to the database.  Use it to monitor edit state and validate data.
+Data read from the database should be immutable.  You should never modify the dataset that you've read.  Using records makes record equality checks simple.  To edit a record, create an edit object.  Read the record to populate the object, and create a new record to save it back to the database.  Use the edit class to monitor edit state and validate data.
+
+## Blazor Server Demo Data Pipline Classes
+
+![Im Memory Pipeline](./images//ImMemory-Service-Configuration.png)
 
 ## The DbContext
 
@@ -70,7 +79,7 @@ The application uses Entity Framework as it's ORM [Object Request Mapper] - a fa
 
 In async environments it's likely that more that one process will access the database at any one time.  The classic single shared db context no longer works.  The solution is to use a Db context factory and apply unit of work principles: normally a context per method instance.
 
-The final DI service setup in `Program` in the Web project will look like this:
+The final DI service setup in `Program` in the Web project looks like this:
 
 ```csharp
 builder.Services.AddDbContextFactory<InMemoryWeatherDbContext>(options => options.UseInMemoryDatabase("WeatherDatabase"));
@@ -95,7 +104,7 @@ public interface IWeatherDbContext
 
 ### InMemoryWeatherDbContext
 
-This is the In-Memory Implementation.  It inherits from `DbContext` and implements `IWeatherDbContext`.  `OnModelCreating` isn't strictly necessary here, but I've used it to demonstrate how to map `DbContext` entities to database objects.
+This is the In-Memory Implementation.  It inherits from `DbContext` and implements `IWeatherDbContext`.  `OnModelCreating` isn't strictly necessary here, but I've included it to demonstrate how to map `DbContext` entities to database objects.
 
 ```csharp
 namespace Blazr.App.Data;
@@ -194,33 +203,32 @@ Yes, but:
 
 This is the object used to make a request.  It's effectively implements paging.
 
-1. It's a readonly structure.
+1. It's a record.
 2. The `TransactionId` provides a unique identifier for logging.
 3. `ItemsProviderRequest` is part of the `Virtualize` component library.  It's implemented so `Virtualize` can be used in UI components.
 
 ```csharp
 namespace Blazr.App.Core;
 
-public readonly struct ListProviderRequest
+public record ListProviderRequest
 {
-    public readonly Guid TransactionId = Guid.NewGuid();
-    public int StartIndex { get; }
-    public int Count { get; }
-    public CancellationToken CancellationToken { get; }
-    public ItemsProviderRequest Request => new (this.StartIndex, this.Count, this.CancellationToken);
+    public Guid TransactionId { get; init; }
+    public int StartIndex { get; init; }
+    public int Count { get; init; }
+    public ListProviderRequest() {}
 
-    public ListProviderRequest(int startIndex, int count, CancellationToken cancellationToken)
+    public ListProviderRequest(int startIndex, int count)
     {
+        TransactionId = Guid.NewGuid();
         StartIndex = startIndex;
         Count = count;
-        CancellationToken = cancellationToken;
     }
 
     public ListProviderRequest(ItemsProviderRequest request)
     {
+        TransactionId = Guid.NewGuid();
         StartIndex = request.StartIndex;
         Count = request.Count;
-        CancellationToken = request.CancellationToken;
     }
 }
 ```
@@ -230,13 +238,17 @@ public readonly struct ListProviderRequest
 This is the object returned.  It contains the `IEnumerable` collection, the total number of records available and status information.  It implements `ItemsProviderResult` for components that use `Virtualize`. 
 
 ```csharp
-public readonly struct ListProviderResult<TItem>
+namespace Blazr.App.Core;
+
+public record ListProviderResult<TItem>
 {
-    public IEnumerable<TItem> Items { get; }
-    public int TotalItemCount { get; }
-    public bool Success { get; }
-    public string? Message { get; }
+    public IEnumerable<TItem> Items { get; init; } = Enumerable.Empty<TItem>();
+    public int TotalItemCount { get; init; }
+    public bool Success { get; init; }
+    public string? Message { get; init; }
     public ItemsProviderResult<TItem> ItemsProviderResult => new ItemsProviderResult<TItem>(this.Items, this.TotalItemCount);
+
+    public ListProviderResult() { }
 
     public ListProviderResult(IEnumerable<TItem> items, int totalItemCount, bool success = true, string? message = null)
     {
@@ -512,8 +524,7 @@ else
 @code {
     protected override async Task OnInitializedAsync()
     {
-        var cancel = new CancellationToken();
-        var request = new ListProviderRequest(0, 1000, cancel);
+        var request = new ListProviderRequest(0, 1000);
         await this.ForecastService.GetWeatherForecastsAsync(request);
         this.NotificationService.ListChanged += this.ListChanged;
     }
@@ -638,7 +649,95 @@ else
 }
 ```
 
-## Summig Up
+## Implementing in WASM
+
+I'm not going into details on how this is built.  It's a bare bones Hosted Web Assembly template.  There's no *Shared*.  *WASM* is Client with no code (it's all in *Data*, *Core* and *UI*) and simply builds out the WASM code base. Server is *WASM.Web* and there's a *Controllers* project for all the API Controller code.
+
+The three extra projects are:
+
+1. *Blazr.App.Controllers* - contains the API controllers
+2. *Blazr.App.WASM* - builds the WASM code base.
+3. *Blazr.App.WASM.Web* - hosts the WASM and runs the controllers.
+
+![WASM In Memory Pipeline](./images/WASM-Service-Configuration.png)
+
+### WeatherForecastController
+
+A standard issue controller implementing a single endpoint.
+
+```csharp
+namespace Blazr.App.Controllers;
+
+[ApiController]
+[Route("/api/[controller]")]
+public class WeatherForecastController : ControllerBase
+{
+    private IDataBroker _dataBroker;
+
+    public WeatherForecastController(IDataBroker dataBroker)
+        => _dataBroker = dataBroker;
+
+    [Route("/api/weatherforecast/list")]
+    [HttpPost]
+    public async ValueTask<ListProviderResult<WeatherForecast>> GetForecastsAsync([FromBody] ListProviderRequest request)
+        => await _dataBroker.GetRecordsAsync<WeatherForecast>(request);
+}
+```
+
+### API Data Broker
+
+The API impementation of `IDataBroker` that makes API calls instead of database calls.
+
+```csharp
+namespace Blazr.App.Data;
+
+public class APIDataBroker : IDataBroker
+{
+    private readonly HttpClient httpClient = default!;
+
+    public APIDataBroker(HttpClient httpClient)
+        => this.httpClient = httpClient!;
+
+    public async ValueTask<ListProviderResult<TRecord>> GetRecordsAsync<TRecord>(ListProviderRequest request) where TRecord : class, new()
+    {
+        string recordname =  (new TRecord()).GetType().Name.ToLower();
+        var response = await this.httpClient.PostAsJsonAsync<ListProviderRequest>($"/api/{recordname}/list/", request);
+        var result = await response.Content.ReadFromJsonAsync<ListProviderResult<TRecord>>();
+        return result 
+            ?? new ListProviderResult<TRecord>(new List<TRecord>(), 0, false, "No Api Found");
+    }
+}
+```
+
+### Service Configurations
+
+Thw WASM project configures the following services and Root components:
+
+```csharp
+builder.RootComponents.Add<Blazr.App.UI.App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
+
+var services = builder.Services;
+{
+    services.AddScoped<IDataBroker, APIDataBroker>();
+    services.AddSingleton<WeatherForecastNotificationService>();
+    services.AddTransient<WeatherForecastListViewService>();
+    services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+}
+```
+
+And the Web project:
+
+```csharp
+var services = builder.Services;
+{
+    services.AddDbContextFactory<InMemoryWeatherDbContext>(options => options.UseInMemoryDatabase("WeatherDatabase"));
+    services.AddSingleton<IDataBroker, ServerInMemoryDataBroker<InMemoryWeatherDbContext>>();
+    services.AddControllers().PartManager.ApplicationParts.Add(new AssemblyPart(typeof(Blazr.App.Controllers.WeatherForecastController).Assembly));
+}
+```
+
+## Summing Up
 
 So what does this show us.
 

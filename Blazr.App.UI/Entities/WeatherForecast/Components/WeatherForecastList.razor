@@ -49,8 +49,7 @@ else
 
     private async Task GetData()
     {
-        var cancel = new CancellationToken();
-        var request = new ListProviderRequest(0, 1000, cancel);
+        var request = new ListProviderRequest(0, 1000);
         await this.ForecastService.GetWeatherForecastsAsync(request);
     }
 

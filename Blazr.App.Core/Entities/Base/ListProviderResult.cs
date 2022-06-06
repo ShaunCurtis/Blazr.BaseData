@@ -5,17 +5,19 @@
 /// ============================================================
 namespace Blazr.App.Core;
 
-public readonly struct ListProviderResult<TItem>
+public record ListProviderResult<TItem>
 {
-    public IEnumerable<TItem> Items { get; }
+    public IEnumerable<TItem> Items { get; init; } = Enumerable.Empty<TItem>();
 
-    public int TotalItemCount { get; }
+    public int TotalItemCount { get; init; }
 
-    public bool Success { get; }
+    public bool Success { get; init; }
 
-    public string? Message { get; }
+    public string? Message { get; init; }
 
     public ItemsProviderResult<TItem> ItemsProviderResult => new ItemsProviderResult<TItem>(this.Items, this.TotalItemCount);
+
+    public ListProviderResult() { }
 
     public ListProviderResult(IEnumerable<TItem> items, int totalItemCount, bool success = true, string? message = null)
     {
