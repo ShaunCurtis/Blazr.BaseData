@@ -52,9 +52,7 @@ public class TestWeatherDataBuilder
 
     public static TestWeatherDataBuilder GetInstance()
     {
-        if (_weatherTestData == null)
-            _weatherTestData = new TestWeatherDataBuilder();
-
+        _weatherTestData ??= new TestWeatherDataBuilder();
         return _weatherTestData;
     }
 }

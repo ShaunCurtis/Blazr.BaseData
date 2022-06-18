@@ -2,28 +2,28 @@
 
 AKA - Get your data out your Components.
 
-The route cause of many Blazor questions asked on StackOverflow and other forums is data pipeline design.  Specifically, retrieving, managing and interacting with data in the UI.   
+The fundimental root cause of many developer's problems in Blazor is data pipeline design.  Specifically, retrieving, managing and interacting with data in the UI.
 
-A typical question goes like this: How do I wire up components B and C to the data in A?  How does B tell A to update the data, and how do you tell C that the data has been updated?  Or I've created the necessary wiring for the above, plastered `StateHasChanged` all over the place and still can't make it work.
+On StackOverflow and other forums a typical question goes like this: How do I wire up components B and C to the data in A?  How does B tell A to update the data, and how do you tell C that the data has been updated?  Or I've created the necessary wiring for the above, plastered calls to `StateHasChanged` all over the place, and still can't make it work.
 
 Two way binding is great, but it's much overused and abused!
 
-The solution is simple: get the data out of the UI.  It belongs in services with events to notify whomever wants to know when things change.
+The solution is to get the data out of the UI: it belongs in services with events to notify whoever wants to know when things change.
 
-In this article I demonstrate how to build a data pipeline for the `FetchData` page of the standard Blazor Template.  Specifically I:
+In this article I demonstrate how to build a data pipeline for the `FetchData` page of the standard Blazor Template:
 
-1. Demonstrate a simple separation of code into projects to enforce a clean design principles.
+1. Simple separation of code into projects to enforce a clean design principles.
 2. Build an in-memory EF database.
-2. Demonstrate how to set up the DbContext Factory and use "unit of work" Db contexts.
-3. Demonstrate how to use interfaces to decouple core application code from the data domain code.
-4. Demonstrate how to build DI [Dependanct Injection] services.
+2. Set up a DbContext Factory and use "unit of work" Db contexts.
+3. Use interfaces to decouple core application code from the data domain code.
+4. Build DI [Dependanct Injection] services.
 5. Implement an event driven service pattern to drive component updates.  
 
 ## Implementation Comments
 
 ### Nullable
 
-`Nullable` is enabled.  It's tempting as a relative beginner to turn it off and get rid of all those warnings you keep getting.  DON'T.  Learn to code with Nullable enabled, it may take a bit of getting used to, but your code will be cleaner and many, many of those `if(x != null)` go way.
+`Nullable` is enabled in the demo code.  It's tempting as a relative beginner to turn it off and get rid of all those warnings you keep getting.  DON'T.  Learn to code with Nullable enabled, it may take a bit of getting used to, but your code will be cleaner and many, many of those `if(x != null)` go way.
 
 ### Clean Design
 
@@ -31,7 +31,7 @@ The solution is split into several projects to promote clean design and enforce 
 
 ### Interfaces and Dependency Injection
 
-The solution uses interfaces extensively to abstract dependencies, and the DI container to manage class instances.  In general it's a good idea to classify your objects into one of four types:
+The solution uses interfaces extensively to abstract dependencies, and the DI container to manage class instances.  In general you your objects should fall into one of four types:
 
 1. DI Services.
 2. Components.
@@ -45,13 +45,13 @@ The solution uses interfaces extensively to abstract dependencies, and the DI co
 
 ## Data Class
 
-Base database classes should represent the data retrieved from and submitted to the database.  Data classes are used throughout the application so are *core domain* objects.
+Base database classes represent the data retrieved from and submitted to the database.  They are used throughout the application anmd belong in the *Core Domain*.
 
 The application uses the original `WeatherForecast` class with the following changes:
 
 1. Changed to a `Record`.
-2. Added Id field.
-3. Remove the `TemperatureF` property.  It's only for display purposes, so we can add it as a class extension.
+2. Added `Id` field.
+3. `TemperatureF` property removed.  It's only for display purposes, so we can add it as a class extension.
 
 ```csharp
 namespace Blazr.App.Core;
@@ -67,7 +67,7 @@ public record WeatherForecast
 
 Why use a `record`?  How do you edit a `WeatherForecast`?
 
-Data read from the database should be immutable.  You should never modify the dataset that you've read.  Using records makes record equality checks simple.  To edit a record, create an edit object.  Read the record to populate the object, and create a new record to save it back to the database.  Use the edit class to monitor edit state and validate data.
+Data read from the database should be immutable.  You should never modify the dataset that you've read.  Using records makes record equality checking simple.  To edit a record, create an edit object.  Read the record into the edit object, and create a new record from the edit object to save back to the database.  Use the edit class to monitor edit state and validate data.
 
 ## Blazor Server Demo Data Pipline Classes
 
@@ -75,11 +75,11 @@ Data read from the database should be immutable.  You should never modify the da
 
 ## The DbContext
 
-The application uses Entity Framework as it's ORM [Object Request Mapper] - a fancy term for the system that does all the hard work in accessing a database.  To keep things simple it uses an in-memory implementation that loads a set of test data when the apllication starts.
+The application uses Entity Framework as it's ORM [Object Request Mapper] - a fancy term for the system that does all the hard work in accessing a database.  To keep things simple it uses an in-memory implementation that loads a set of test data when the application starts.
 
-In async environments it's likely that more that one process will access the database at any one time.  The classic single shared db context no longer works.  The solution is to use a Db context factory and apply unit of work principles: normally a context per method instance.
+In async environments it's likely that more that one process will access the database at any one time.  The classic single shared db context model no longer works.  Instead the solution uses a Db context factory to apply unit of work principles: normally a context per method instance.
 
-The final DI service setup in `Program` in the Web project looks like this:
+The service setup in `Program` in the Web project looks like this:
 
 ```csharp
 builder.Services.AddDbContextFactory<InMemoryWeatherDbContext>(options => options.UseInMemoryDatabase("WeatherDatabase"));
@@ -87,7 +87,9 @@ builder.Services.AddDbContextFactory<InMemoryWeatherDbContext>(options => option
 
 ### IWeatherDbContext
 
-First an interface to abstract the DbContext.  Note that it's necessary to expose any underlying `DbContext` methods that are used by the Data Broker.
+First an interface to abstract the DbContext.  Note that any underlying `DbContext` methods that are used by the Data Broker need to be defined in the interface.
+
+Our simple inteface defines: 
 
 1. A DBSet property for the WeatherForecast collection.
 2. The `Set` method of underlying `DbConbtext`. 
@@ -104,7 +106,7 @@ public interface IWeatherDbContext
 
 ### InMemoryWeatherDbContext
 
-This is the In-Memory Implementation.  It inherits from `DbContext` and implements `IWeatherDbContext`.  `OnModelCreating` isn't strictly necessary here, but I've included it to demonstrate how to map `DbContext` entities to database objects.
+This is the In-Memory implementation.  It inherits from `DbContext` and implements `IWeatherDbContext`.  `OnModelCreating` isn't strictly necessary here, but I've included it to demonstrate how to map `DbContext` entities to database objects.
 
 ```csharp
 namespace Blazr.App.Data;
@@ -123,7 +125,7 @@ public class InMemoryWeatherDbContext
 
 ## Test Data
 
-`TestWeatherDataBuilder` is based on the *Singleton Pattern* (not to be confused with Singleton Service) class.  It maintains a single instance of the class accessed through the static `GetInstance()` method.  There's a single public method - `LoadDbContext` - to load the test data into the supplied `InMemoryWeatherDbContext`.
+`TestWeatherDataBuilder` is a *Singleton Pattern* (not to be confused with Singleton Service) class: it maintains a single instance of the class accessed through the static `GetInstance()` method.  There's a single public method - `LoadDbContext` - to load the test data into the supplied `InMemoryWeatherDbContext`.
 
 ```csharp
 namespace Blazr.App.Data;
@@ -174,9 +176,7 @@ public class TestWeatherDataBuilder
 
     public static TestWeatherDataBuilder GetInstance()
     {
-        if (_weatherTestData == null)
-            _weatherTestData = new TestWeatherDataBuilder();
-
+        _weatherTestData ??= new TestWeatherDataBuilder();
         return _weatherTestData;
     }
 }
