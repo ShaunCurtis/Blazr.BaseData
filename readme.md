@@ -2,9 +2,9 @@
 
 A.K.A. - Get your data out your components.
 
-This article describes how to build a structured data pipeline for a Blazor database applicatuon.
+This article describes how to build a structured data pipeline for a Blazor database application.
 
-The fundimental root cause of many developer's problems in Blazor is data pipeline design.  Specifically, retrieving, managing and interacting with data in the UI.
+The fundimental root cause of many problems in Blazor is data pipeline design.  Specifically, retrieving, managing and interacting with data in the UI.
 
 On StackOverflow and other forums a typical question goes like this: How do I wire up components B and C to the data in A?  How does B tell A to update the data, and how do you tell C that the data has been updated?  Or I've created the necessary wiring for the above, plastered calls to `StateHasChanged` all over the place, and still can't make it work.
 
@@ -14,12 +14,16 @@ The solution is to get the data out of the UI: it belongs in services with event
 
 In this article I demonstrate how to build a data pipeline for the `FetchData` page of the standard Blazor Template:
 
-1. Simple separation of code into projects to enforce a clean design principles.
+1. Simple separation of code into projects to enforce clean design principles.
 2. Build an in-memory EF database.
-2. Set up a DbContext Factory and use "unit of work" Db contexts.
+2. Set up a DbContext factory and use "unit of work" Db contexts.
 3. Use interfaces to decouple core application code from the data domain code.
 4. Build DI [Dependanct Injection] services.
 5. Implement an event driven service pattern to drive component updates.  
+
+## Repository
+
+The code repository and original article is here: [GitHub - Blazr.BaseData](https://github.com/ShaunCurtis/Blazr.BaseData).
 
 ## Implementation Comments
 
@@ -47,7 +51,7 @@ The solution uses interfaces extensively to abstract dependencies, and the DI co
 
 ## Data Class
 
-Base database classes represent the data retrieved from and submitted to the database.  They are used throughout the application anmd belong in the *Core Domain*.
+Base database classes represent the data retrieved from and submitted to the database.  They are used throughout the application and belong in the *Core Domain*.
 
 The application uses the original `WeatherForecast` class with the following changes:
 
@@ -79,7 +83,7 @@ Data read from the database should be immutable.  You should never modify the da
 
 The application uses Entity Framework as it's ORM [Object Request Mapper] - a fancy term for the system that does all the hard work in accessing a database.  To keep things simple it uses an in-memory implementation that loads a set of test data when the application starts.
 
-In async environments it's likely that more that one process will access the database at any one time.  The classic single shared db context model no longer works.  Instead the solution uses a Db context factory to apply unit of work principles: normally a context per method instance.
+In async environments it's likely that more that one process will access the database at any one time.  The classic single shared database context model no longer works.  Instead the solution uses a database context factory to apply unit of work principles: normally a context per method instance.
 
 The service setup in `Program` in the Web project looks like this:
 
