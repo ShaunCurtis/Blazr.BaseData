@@ -7,7 +7,7 @@ namespace Blazr.App.Core;
 
 public record ListProviderResult<TItem>
 {
-    public IEnumerable<TItem> Items { get; init; } = Enumerable.Empty<TItem>();
+    public IEnumerable<TItem> Items { get; init; }
 
     public int TotalItemCount { get; init; }
 
@@ -17,7 +17,13 @@ public record ListProviderResult<TItem>
 
     public ItemsProviderResult<TItem> ItemsProviderResult => new ItemsProviderResult<TItem>(this.Items, this.TotalItemCount);
 
-    public ListProviderResult() { }
+    public ListProviderResult() 
+    {
+        Items = Enumerable.Empty<TItem>();
+        TotalItemCount = 0;
+        Success = false;
+        Message = "Empty New Initialization";
+    }
 
     public ListProviderResult(IEnumerable<TItem> items, int totalItemCount, bool success = true, string? message = null)
     {

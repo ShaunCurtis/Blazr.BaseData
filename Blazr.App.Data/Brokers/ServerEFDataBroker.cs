@@ -43,7 +43,7 @@ public class ServerEFDataBroker<TDbContext>
         catch
         {
             _success = false;
-            _message = "Error in Executing Query.  This is probably caused by an incompatible SortExpression or QueryExpression";
+            _message = "Error in Executing Query.";
             return new List<TRecord>();
         }
     }
@@ -61,7 +61,7 @@ public class ServerEFDataBroker<TDbContext>
         catch
         {
             _success = false;
-            _message = "Error in Executing Query.  This is probably caused by an incompatible SortExpression or QueryExpression";
+            _message = "Error in Executing Query.";
             return 0;
         }
     }

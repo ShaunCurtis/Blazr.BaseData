@@ -1,6 +1,8 @@
 # Organizing Your Data Pipeline in Blazor
 
-AKA - Get your data out your Components.
+A.K.A. - Get your data out your components.
+
+This article describes how to build a structured data pipeline for a Blazor database applicatuon.
 
 The fundimental root cause of many developer's problems in Blazor is data pipeline design.  Specifically, retrieving, managing and interacting with data in the UI.
 
@@ -205,7 +207,7 @@ This is the object used to make a request.  It's effectively implements paging.
 
 1. It's a record.
 2. The `TransactionId` provides a unique identifier for logging.
-3. `ItemsProviderRequest` is part of the `Virtualize` component library.  It's implemented so `Virtualize` can be used in UI components.
+3. `ItemsProviderRequest` is part of the `Virtualize` component library.
 
 ```csharp
 namespace Blazr.App.Core;
@@ -215,7 +217,13 @@ public record ListProviderRequest
     public Guid TransactionId { get; init; }
     public int StartIndex { get; init; }
     public int Count { get; init; }
-    public ListProviderRequest() {}
+
+    public ListProviderRequest() 
+    {
+        TransactionId = Guid.NewGuid();
+        StartIndex = 0;
+        Count = 1000;
+    }
 
     public ListProviderRequest(int startIndex, int count)
     {
@@ -242,13 +250,19 @@ namespace Blazr.App.Core;
 
 public record ListProviderResult<TItem>
 {
-    public IEnumerable<TItem> Items { get; init; } = Enumerable.Empty<TItem>();
+    public IEnumerable<TItem> Items { get; init; }
     public int TotalItemCount { get; init; }
     public bool Success { get; init; }
     public string? Message { get; init; }
     public ItemsProviderResult<TItem> ItemsProviderResult => new ItemsProviderResult<TItem>(this.Items, this.TotalItemCount);
 
-    public ListProviderResult() { }
+    public ListProviderResult() 
+    {
+        Items = Enumerable.Empty<TItem>();
+        TotalItemCount = 0;
+        Success = false;
+        Message = "Empty New Initialization";
+    }
 
     public ListProviderResult(IEnumerable<TItem> items, int totalItemCount, bool success = true, string? message = null)
     {
@@ -278,8 +292,8 @@ public interface IDataBroker
 The Server implementation.  Note:
 
 1. The abstraction of the Db context to `IWeatherDbContext`.
-2. The two internal methods to get the paged list and the count.
-3. The use of `IQueryable` to construct the query and the final execution of the query wrapped in `try` to catch any unexpected exceptions.
+2. The two internal methods: we need to get both the paged list and the total record count.
+3. The use of `IQueryable` to construct the query and the final execution of the query wrapped in `try` to catch any unexpected exceptions.  This is strictly needed here. but if we add sorting and filtering operations then it is.
 4. The construction of the `ListProviderRequest` object to return to the caller. 
 
 ```csharp
@@ -350,7 +364,7 @@ public class ServerEFDataBroker<TDbContext>
 
 ### ServerInMemoryDataBroker
 
-The test implemention that inherits from `ServerEFDataBroker` and adds the test data to the in-memory database when the Singleton service is initialized. 
+The test implemention.  It inherits from `ServerEFDataBroker` and adds the test data to the in-memory database when the Singleton service is initialized. 
 
 ```csharp
 public class ServerInMemoryDataBroker<TDbContext>
@@ -453,10 +467,10 @@ public class WeatherForecastListViewService
 
 The application splits components into: 
 
-1. *Routes* aka pages - basically components with a `@page` attribute. 
+1. *Routes* a.k.a. pages - basically components with a `@page` attribute. 
 2. *Components* - forms of one sort or another.
 
-Components are often used in more than one page.  You may show a list of orders on a Customer page and a list of orders on a Today's Orders page.  Separating out the content from the page/route makes it easy to re-use components.
+Components may be used in more than one page.  You may show a list of orders on a Customer page and a list of orders on a Today's Orders page.  Separating out the content from the page/route makes it easy to re-use components.
 
 The application demonstrates three list implementations:
 
@@ -479,7 +493,7 @@ The application demonstrates three list implementations:
 
 1. It contains no data.  That all resides in `WeatherForecastListViewService`.
 2. It constructs a query and passes that to the view to get the data.
-3. It registers a handler with the notification service to update the display. It does'
+3. It registers a handler with the notification service to update the display.
 
 ```csharp
 @namespace Blazr.App.UI
@@ -651,7 +665,7 @@ else
 
 ## Implementing in WASM
 
-I'm not going into details on how this is built.  It's a bare bones Hosted Web Assembly template.  There's no *Shared*.  *WASM* is Client with no code (it's all in *Data*, *Core* and *UI*) and simply builds out the WASM code base. Server is *WASM.Web* and there's a *Controllers* project for all the API Controller code.
+I'm not going into details on how this is built.  It's a bare bones Hosted Web Assembly template.  There's no *Shared*.  *WASM* is Client with no code (it's all in *Data*, *Core* and *UI*): it's purpose is to build out the WASM code base. Server is *WASM.Web* and there's a *Controllers* project for the API Controller code.
 
 The three extra projects are:
 
@@ -686,7 +700,7 @@ public class WeatherForecastController : ControllerBase
 
 ### API Data Broker
 
-The API impementation of `IDataBroker` that makes API calls instead of database calls.
+The API implementation of `IDataBroker` that makes API calls instead of database calls.
 
 ```csharp
 namespace Blazr.App.Data;
@@ -703,15 +717,14 @@ public class APIDataBroker : IDataBroker
         string recordname =  (new TRecord()).GetType().Name.ToLower();
         var response = await this.httpClient.PostAsJsonAsync<ListProviderRequest>($"/api/{recordname}/list/", request);
         var result = await response.Content.ReadFromJsonAsync<ListProviderResult<TRecord>>();
-        return result 
-            ?? new ListProviderResult<TRecord>(new List<TRecord>(), 0, false, "No Api Found");
+        return result ?? new ListProviderResult<TRecord>(new List<TRecord>(), 0, false, "No Api Found");
     }
 }
 ```
 
 ### Service Configurations
 
-Thw WASM project configures the following services and Root components:
+The WASM project configures the following services and root components:
 
 ```csharp
 builder.RootComponents.Add<Blazr.App.UI.App>("#app");
@@ -737,17 +750,16 @@ var services = builder.Services;
 }
 ```
 
+## Project Views
+
+![Basic Pipeline](./images/core-data-project.png)
+
+![Basic Pipeline](./images/ui-server-project.png)
+
+![Basic Pipeline](./images/wasm-controller-web-project.png)
+
+
 ## Summing Up
 
-So what does this show us.
-
-1. Get your design wrong and you will pay.
-
-2. While there'a more code involved in "doing it right".  In the long run it pays dividends.
-
-3. Think component/service when you create a class.
-
-4. Components consume data objects.  They don't hold/create/manage them.
-
-5. An event driven model is much cleaner and easy to manage.
+This article demonstratates some important concepts that need to be applied to database based Blazor applications.  There's more code involved in doing it right, but it will pay dividends in the long run.
 

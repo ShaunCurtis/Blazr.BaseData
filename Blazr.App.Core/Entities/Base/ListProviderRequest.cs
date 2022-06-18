@@ -14,7 +14,12 @@ public record ListProviderRequest
 
     public int Count { get; init; }
 
-    public ListProviderRequest() {}
+    public ListProviderRequest() 
+    {
+        TransactionId = Guid.NewGuid();
+        StartIndex = 0;
+        Count = 1000;
+    }
 
     public ListProviderRequest(int startIndex, int count)
     {
